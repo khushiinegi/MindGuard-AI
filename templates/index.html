@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Wellbeing Guardian</title>
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js for sound generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <style>
+        /* Custom styles for the progress bar animation */
+        @keyframes fillProgressBar {
+            from { width: 0%; }
+            to { width: var(--progress-width, 100%); }
+        }
+        .progress-bar-fill {
+            animation: fillProgressBar 1s ease-out forwards; /* Adjust duration as needed */
+        }
+
+        /* Custom background image styling */
+        body {
+            background-image: url('https://raw.githubusercontent.com/google-gemini/gemini-canvas-projects/main/Digital-Wellbeing-Guardian/uploaded_images/1695235198927.jpg'); /* Direct URL to uploaded image */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed; /* Makes background fixed when scrolling */
+            background-color: #f3f4f6; /* Fallback background color */
+        }
+
+        /* Overlay for readability */
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.1); /* Slightly darker overlay */
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 font-sans text-gray-800 relative">
+
+    <!-- Overlay for readability -->
+    <div class="overlay"></div>
+
+    <!-- Main Application Section (Always visible) -->
+    <div id="app-container" class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full text-center border-t-4 border-blue-500 relative z-10">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-3xl font-extrabold text-blue-700">
+                <span role="img" aria-label="phone">📱</span> Digital Wellbeing Guardian
+            </h1>
+        </div>
+
+        <div class="mb-6">
+            <p id="timer-label" class="text-xl font-semibold text-gray-700 mb-2">⏱️ Time Elapsed:</p>
+            <div id="time-display" class="text-5xl font-bold text-gray-900 mb-4">00:00:00</div>
+
+            <!-- Progress Bar -->
+            <div class="w-full bg-gray-200 rounded-full h-4 mb-4 overflow-hidden">
+                <div id="progress-bar-fill" class="h-full rounded-full transition-all duration-1000 ease-linear bg-blue-500"></div>
+            </div>
+
+            <p id="message" class="text-lg text-gray-600 min-h-[2.5rem] flex items-center justify-center"></p>
+        </div>
+
+        <!-- Action Buttons -->
+        <div id="action-buttons" class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-4">
+            <button id="pause-resume-btn"
+                    class="bg-yellow-500 text-white font-bold py-3 px-6 rounded-md shadow-lg
+                           transition duration-300 ease-in-out transform hover:scale-105">
+                Pause
+            </button>
+            <button id="reset-timer-btn"
+                    class="bg-red-500 text-white font-bold py-3 px-6 rounded-md shadow-lg
+                           transition duration-300 ease-in-out transform hover:scale-105">
+                Reset Timer
+            </button>
+            <button id="snooze-btn"
+                    class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-md shadow-lg
+                           transition duration-300 ease-in-out transform hover:scale-105 hidden">
+                Snooze (5m)
+            </button>
+            <button id="skip-break-btn"
+                    class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-md shadow-lg
+                           transition duration-300 ease-in-out transform hover:scale-105 hidden">
+                Skip Break
+            </button>
+            <button id="start-pomodoro-btn"
+                    class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-md shadow-lg
+                           transition duration-300 ease-in-out transform hover:scale-105">
+                Start Pomodoro
+            </button>
+        </div>
+
+        <!-- Statistics -->
+        <div class="mt-8 pt-6 border-t border-gray-200">
+            <h2 class="text-xl font-bold text-blue-700 mb-4">Statistics</h2>
+            <p class="text-gray-700">Breaks Taken: <span id="breaks-taken-count" class="font-bold text-blue-700">0</span></p>
+            <p class="text-gray-700">Pomodoro Cycles Completed: <span id="pomodoro-cycles-count" class="font-bold text-blue-700">0</span></p>
+        </div>
+
+        <!-- Configuration Section -->
+        <div class="mt-8 pt-6 border-t border-gray-200">
+            <h2 class="text-xl font-bold text-blue-700 mb-4">Settings</h2>
+
+            <!-- Work Interval (Standard Mode) -->
+            <div id="standard-timer-settings" class="mb-6">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Standard Timer Settings</h3>
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+                    <label for="break-interval" class="text-gray-700 font-medium">Work Interval (minutes):</label>
+                    <input type="number" id="break-interval" min="1" value="10"
+                           class="w-24 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-center">
+                    <button id="set-interval-btn"
+                            class="bg-blue-500 text-white font-bold py-2 px-4 rounded-md shadow-md
+                                   transition duration-300 ease-in-out transform hover:scale-105">
+                        Set
+                    </button>
+                </div>
+            </div>
+
+            <!-- Pomodoro Settings -->
+            <div id="pomodoro-settings" class="mb-6 border-t border-gray-200 pt-6">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Pomodoro Settings</h3>
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-3">
+                    <label for="pomodoro-work-duration" class="text-gray-700 font-medium">Work (min):</label>
+                    <input type="number" id="pomodoro-work-duration" min="1" value="25"
+                           class="w-20 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-center">
+                    <label for="pomodoro-short-break" class="text-gray-700 font-medium">Short Break (min):</label>
+                    <input type="number" id="pomodoro-short-break" min="1" value="5"
+                           class="w-20 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-center">
+                </div>
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-3">
+                    <label for="pomodoro-long-break" class="text-gray-700 font-medium">Long Break (min):</label>
+                    <input type="number" id="pomodoro-long-break" min="1" value="15"
+                           class="w-20 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-center">
+                    <label for="pomodoro-cycles" class="text-gray-700 font-medium">Cycles before Long Break:</label>
+                    <input type="number" id="pomodoro-cycles" min="1" value="4"
+                           class="w-20 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-center">
+                </div>
+                <button id="set-pomodoro-settings-btn"
+                        class="bg-blue-500 text-white font-bold py-2 px-4 rounded-md shadow-md
+                               transition duration-300 ease-in-out transform hover:scale-105 mt-2">
+                    Set Pomodoro Settings
+                </button>
+            </div>
+
+
+            <!-- Break Duration (Standard Mode) -->
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+                <label for="break-duration" class="text-gray-700 font-medium">Break Duration (minutes):</label>
+                <input type="number" id="break-duration" min="1" value="5"
+                       class="w-24 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-center">
+                <button id="set-break-duration-btn"
+                        class="bg-blue-500 text-white font-bold py-2 px-4 rounded-md shadow-md
+                               transition duration-300 ease-in-out transform hover:scale-105">
+                        Set
+                </button>
+            </div>
+
+            <!-- Customizable Break Suggestions -->
+            <div class="mb-6">
+                <label for="new-suggestion" class="text-gray-700 font-medium block mb-2">Add Break Suggestion:</label>
+                <div class="flex items-center justify-center gap-2">
+                    <input type="text" id="new-suggestion" placeholder="e.g., Get water, Stretch"
+                           class="flex-grow p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button id="add-suggestion-btn"
+                            class="bg-blue-500 text-white font-bold py-2 px-4 rounded-md shadow-md
+                                   transition duration-300 ease-in-out transform hover:scale-105">
+                        Add
+                    </button>
+                </div>
+                <div id="suggestions-list" class="mt-4 text-left p-2 border border-gray-200 rounded-md bg-gray-50 max-h-32 overflow-y-auto">
+                    <p class="text-gray-500 text-sm">No custom suggestions yet.</p>
+                </div>
+            </div>
+
+            <!-- Custom Sound Selection -->
+            <div class="flex items-center justify-center gap-4 mb-6">
+                <label for="sound-selector" class="text-gray-700 font-medium">Select Alert Sound:</label>
+                <select id="sound-selector"
+                        class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="beep">Beep (C5)</option>
+                    <option value="chime">Chime (E4, G4, C5)</option>
+                    <option value="bell">Bell (G4, D5)</option>
+                </select>
+            </div>
+
+            <!-- Forced Break Mode -->
+            <div class="flex items-center justify-center gap-2 mb-6">
+                <input type="checkbox" id="forced-break-mode" class="form-checkbox h-5 w-5 rounded focus:ring-blue-500">
+                <label for="forced-break-mode" class="text-gray-700 font-medium">Enable Forced Break Mode (min 30s)</label>
+            </div>
+
+            <!-- Notification Permission -->
+            <div class="mb-6">
+                <button id="request-notification-btn"
+                        class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md shadow-md
+                               transition duration-300 ease-in-out transform hover:scale-105">
+                    Enable Notifications
+                </button>
+                <p id="notification-status" class="text-sm mt-2 text-gray-600"></p>
+            </div>
+
+            <!-- Theme Selector -->
+            <div class="flex items-center justify-center gap-4">
+                <label for="theme-selector" class="text-gray-700 font-medium">Select Theme:</label>
+                <select id="theme-selector"
+                        class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="default">Default (Blue)</option>
+                    <option value="green">Green</option>
+                    <option value="purple">Purple</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs (authentication-related imports removed) -->
+    <script type="module">
+        // Removed Firebase app initialization and auth/firestore imports
+        // as they are no longer strictly necessary without authentication or persistent data storage.
+        // If you plan to use Firestore for analytics, you would re-add them here.
+
+        // --- DOM Elements ---
+        const mainAppSection = document.getElementById('app-container'); // Corrected ID reference
+        const appContainer = document.getElementById('app-container'); // This is the outer container
+        const timeDisplay = document.getElementById('time-display');
+        const timerLabel = document.getElementById('timer-label');
+        const messageDisplay = document.getElementById('message');
+        const breakIntervalInput = document.getElementById('break-interval');
+        const breakDurationInput = document.getElementById('break-duration');
+        const setIntervalBtn = document.getElementById('set-interval-btn');
+        const setBreakDurationBtn = document.getElementById('set-break-duration-btn');
+        const resetTimerBtn = document.getElementById('reset-timer-btn');
+        const pauseResumeBtn = document.getElementById('pause-resume-btn');
+        const snoozeBtn = document.getElementById('snooze-btn');
+        const skipBreakBtn = document.getElementById('skip-break-btn');
+        const startPomodoroBtn = document.getElementById('start-pomodoro-btn');
+        const progressBarFill = document.getElementById('progress-bar-fill');
+        const newSuggestionInput = document.getElementById('new-suggestion');
+        const addSuggestionBtn = document.getElementById('add-suggestion-btn');
+        const suggestionsList = document.getElementById('suggestions-list');
+        const requestNotificationBtn = document.getElementById('request-notification-btn');
+        const notificationStatus = document.getElementById('notification-status');
+        const breaksTakenCount = document.getElementById('breaks-taken-count');
+        const pomodoroCyclesCount = document.getElementById('pomodoro-cycles-count');
+        const themeSelector = document.getElementById('theme-selector');
+        const soundSelector = document.getElementById('sound-selector');
+        const forcedBreakModeCheckbox = document.getElementById('forced-break-mode');
+
+        const pomodoroWorkDurationInput = document.getElementById('pomodoro-work-duration');
+        const pomodoroShortBreakInput = document.getElementById('pomodoro-short-break');
+        const pomodoroLongBreakInput = document.getElementById('pomodoro-long-break');
+        const pomodoroCyclesInput = document.getElementById('pomodoro-cycles');
+        const setPomodoroSettingsBtn = document.getElementById('set-pomodoro-settings-btn');
+
+
+        // Initialize Tone.js for sound (different synths for different sounds)
+        const sounds = {
+            beep: new Tone.Synth().toDestination(),
+            chime: new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: "sine" },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0.05, release: 0.5 }
+            }).toDestination(),
+            bell: new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: "triangle" },
+                envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.8 }
+            }).toDestination()
+        };
+
+        // Variables for timer and break interval
+        let startTime = new Date();
+        let breakIntervalMinutes = 10; // Standard work interval in minutes
+        let breakDurationMinutes = 5; // Standard break duration in minutes
+        let timerIntervalId; // To store the ID of the setInterval, so we can clear it
+        let isPaused = false;
+        let pausedElapsedSeconds = 0; // To store elapsed time when paused
+        let isBreakMode = false; // True when in break countdown
+        let breakStartTime = new Date(); // To track start of break
+        let breaksTaken = 0;
+        let customSuggestions = ["Take a short walk", "Stretch your body", "Look away from the screen", "Get some water", "Do a quick meditation"];
+        let currentSound = 'beep'; // Default sound
+
+        // Pomodoro specific variables
+        let pomodoroMode = false;
+        let pomodoroWorkDuration = 25;
+        let pomodoroShortBreakDuration = 5;
+        let pomodoroLongBreakDuration = 15;
+        let pomodoroCyclesBeforeLongBreak = 4;
+        let pomodoroCurrentCycle = 0; // Tracks completed work cycles
+        let pomodoroPhase = 'work'; // 'work', 'short-break', 'long-break'
+        let pomodoroStartTime = new Date(); // Start time for current pomodoro phase
+
+        let forcedBreakActive = false; // For "Forced Break Mode"
+
+        // Analytics variables (data tracking remains)
+        let dailyUsageData = []; // Array to store daily usage stats
+
+        // Define theme colors mapping
+        const themeColors = {
+            'default': {
+                primary: 'blue-500',
+                textPrimary: 'blue-700',
+                secondary: 'red-500',
+                textSecondary: 'red-600',
+                accent: 'yellow-500',
+                focusRing: 'blue-500' // For focus rings on inputs/selects
+            },
+            'green': {
+                primary: 'emerald-500',
+                textPrimary: 'emerald-500',
+                secondary: 'red-600',
+                textSecondary: 'red-600',
+                accent: 'yellow-400',
+                focusRing: 'emerald-500'
+            },
+            'purple': {
+                primary: 'violet-500',
+                textPrimary: 'violet-500',
+                secondary: 'red-500',
+                textSecondary: 'red-500',
+                accent: 'yellow-500',
+                focusRing: 'violet-500'
+            }
+        };
+
+        // --- Utility Functions ---
+
+        /**
+         * Gets the current date in YYYY-MM-DD format.
+         * @returns {string} Current date string.
+         */
+        function getCurrentDateString() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = (today.getMonth() + 1).toString().padStart(2, '0');
+            const day = today.getDate().toString().padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        /**
+         * Plays the selected alert sound.
+         */
+        function playBeep() {
+            // Ensure audio context is running on user interaction
+            if (Tone.context.state !== 'running') {
+                Tone.start();
+            }
+            switch (currentSound) {
+                case 'beep':
+                    sounds.beep.triggerAttackRelease("C5", "8n");
+                    break;
+                case 'chime':
+                    sounds.chime.triggerAttackRelease(["E4", "G4", "C5"], "0.5");
+                    break;
+                case 'bell':
+                    sounds.bell.triggerAttackRelease(["G4", "D5"], "0.7");
+                    break;
+                default:
+                    sounds.beep.triggerAttackRelease("C5", "8n");
+            }
+        }
+
+        /**
+         * Sends a browser notification.
+         * @param {string} title - The title of the notification.
+         * @param {string} body - The body text of the notification.
+         */
+        function sendNotification(title, body) {
+            if (Notification.permission === "granted") {
+                new Notification(title, { body: body, icon: 'https://placehold.co/64x64/000/fff?text=🔔' });
+            }
+        }
+
+        /**
+         * Renders the list of custom break suggestions.
+         */
+        function renderSuggestions() {
+            suggestionsList.innerHTML = '';
+            if (customSuggestions.length === 0) {
+                suggestionsList.innerHTML = '<p class="text-gray-500 text-sm">No custom suggestions yet.</p>';
+                return;
+            }
+            customSuggestions.forEach((suggestion, index) => {
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center py-1 px-2 border-b border-gray-100 last:border-b-0';
+                div.innerHTML = `
+                    <span class="text-gray-700">${suggestion}</span>
+                    <button data-index="${index}" class="remove-suggestion-btn text-red-400 hover:text-red-600 text-sm font-bold">X</button>
+                `;
+                suggestionsList.appendChild(div);
+            });
+
+            // Add event listeners for remove buttons
+            document.querySelectorAll('.remove-suggestion-btn').forEach(button => {
+                button.onclick = (e) => {
+                    const indexToRemove = parseInt(e.target.dataset.index);
+                    customSuggestions.splice(indexToRemove, 1);
+                    localStorage.setItem('wellbeingGuardianSuggestions', JSON.stringify(customSuggestions));
+                    renderSuggestions();
+                };
+            });
+        }
+
+        /**
+         * Applies the selected theme to the app container and relevant elements.
+         * @param {string} themeName - The name of the theme to apply.
+         */
+        function applyTheme(themeName) {
+            const colors = themeColors[themeName];
+            if (!colors) return; // Fallback if themeName is invalid
+
+            // Apply colors directly to elements
+            // App Container Border (applies to the main app section)
+            mainAppSection.classList.remove('border-blue-500', 'border-emerald-500', 'border-violet-500');
+            mainAppSection.classList.add(`border-${colors.primary}`);
+
+
+            // Main Title
+            document.querySelector('h1').classList.remove('text-blue-700', 'text-emerald-500', 'text-violet-500');
+            document.querySelector('h1').classList.add(`text-${colors.textPrimary}`);
+
+            // Progress Bar Fill
+            progressBarFill.classList.remove('bg-blue-500', 'bg-emerald-500', 'bg-violet-500');
+            progressBarFill.classList.add(`bg-${colors.primary}`);
+
+            // Statistics and Settings Headers
+            document.querySelectorAll('h2').forEach(h2 => {
+                h2.classList.remove('text-blue-700', 'text-emerald-500', 'text-violet-500');
+                h2.classList.add(`text-${colors.textPrimary}`);
+            });
+
+            // Buttons (primary, secondary, accent)
+            setIntervalBtn.classList.remove('bg-blue-500', 'bg-emerald-500', 'bg-violet-500');
+            setIntervalBtn.classList.add(`bg-${colors.primary}`);
+            setBreakDurationBtn.classList.remove('bg-blue-500', 'bg-emerald-500', 'bg-violet-500');
+            setBreakDurationBtn.classList.add(`bg-${colors.primary}`);
+            setPomodoroSettingsBtn.classList.remove('bg-blue-500', 'bg-emerald-500', 'bg-violet-500');
+            setPomodoroSettingsBtn.classList.add(`bg-${colors.primary}`);
+            addSuggestionBtn.classList.remove('bg-blue-500', 'bg-emerald-500', 'bg-violet-500');
+            addSuggestionBtn.classList.add(`bg-${colors.primary}`);
+
+            resetTimerBtn.classList.remove('bg-red-500', 'bg-red-600');
+            resetTimerBtn.classList.add(`bg-${colors.secondary}`);
+
+            pauseResumeBtn.classList.remove('bg-yellow-500', 'bg-yellow-400');
+            pauseResumeBtn.classList.add(`bg-${colors.accent}`);
+
+            // Text colors for stats
+            breaksTakenCount.classList.remove('text-blue-700', 'text-emerald-500', 'text-violet-500');
+            breaksTakenCount.classList.add(`text-${colors.textPrimary}`);
+            pomodoroCyclesCount.classList.remove('text-blue-700', 'text-emerald-500', 'text-violet-500');
+            pomodoroCyclesCount.classList.add(`text-${colors.textPrimary}`);
+
+            // Input/Select Focus Rings
+            document.querySelectorAll('input[type="number"], input[type="text"], select').forEach(el => {
+                el.classList.remove('focus:ring-blue-500', 'focus:ring-emerald-500', 'focus:ring-violet-500');
+                el.classList.add(`focus:ring-${colors.focusRing}`);
+            });
+
+            // Checkbox
+            forcedBreakModeCheckbox.classList.remove('text-blue-500', 'text-emerald-500', 'text-violet-500');
+            forcedBreakModeCheckbox.classList.add(`text-${colors.primary}`);
+
+            localStorage.setItem('wellbeingGuardianTheme', themeName);
+        }
+
+        /**
+         * Loads analytics data from localStorage and prunes old data.
+         */
+        function loadAnalyticsData() {
+            const storedData = localStorage.getItem('wellbeingGuardianDailyUsage');
+            if (storedData) {
+                dailyUsageData = JSON.parse(storedData);
+            } else {
+                dailyUsageData = [];
+            }
+            // Prune data older than 7 days
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            dailyUsageData = dailyUsageData.filter(d => new Date(d.date) >= sevenDaysAgo);
+
+            // Ensure current day's entry exists
+            const todayString = getCurrentDateString();
+            let todayEntry = dailyUsageData.find(d => d.date === todayString);
+            if (!todayEntry) {
+                todayEntry = { date: todayString, screenTimeSeconds: 0, breaksTaken: 0, snoozes: 0, skips: 0 };
+                dailyUsageData.push(todayEntry);
+            }
+            saveAnalyticsData(); // Save updated structure
+        }
+
+        /**
+         * Saves analytics data to localStorage.
+         */
+        function saveAnalyticsData() {
+            localStorage.setItem('wellbeingGuardianDailyUsage', JSON.stringify(dailyUsageData));
+        }
+
+        /**
+         * Increments screen time for the current day.
+         */
+        function incrementScreenTime() {
+            const todayString = getCurrentDateString();
+            let todayEntry = dailyUsageData.find(d => d.date === todayString);
+
+            if (!todayEntry) {
+                // This should ideally not happen if loadAnalyticsData is called correctly
+                // but as a fallback, create a new entry.
+                todayEntry = { date: todayString, screenTimeSeconds: 0, breaksTaken: 0, snoozes: 0, skips: 0 };
+                dailyUsageData.push(todayEntry);
+            }
+            todayEntry.screenTimeSeconds++;
+            saveAnalyticsData();
+        }
+
+        /**
+         * Increments a specific stat for the current day.
+         * @param {string} statName - The name of the stat to increment ('breaksTaken', 'snoozes', 'skips').
+         */
+        function incrementDailyStat(statName) {
+            const todayString = getCurrentDateString();
+            let todayEntry = dailyUsageData.find(d => d.date === todayString);
+            if (todayEntry) {
+                todayEntry[statName]++;
+                saveAnalyticsData();
+            }
+        }
+
+
+        // --- Core Logic Functions ---
+
+        /**
+         * Loads settings from localStorage or sets defaults.
+         */
+        function loadSettings() {
+            console.log("loadSettings called."); // Debugging log
+            const storedStartTime = localStorage.getItem('wellbeingGuardianStartTime');
+            const storedBreakInterval = localStorage.getItem('wellbeingGuardianBreakInterval');
+            const storedBreakDuration = localStorage.getItem('wellbeingGuardianBreakDuration');
+            const storedIsPaused = localStorage.getItem('wellbeingGuardianIsPaused');
+            const storedPausedElapsedSeconds = localStorage.getItem('wellbeingGuardianPausedElapsedSeconds');
+            const storedIsBreakMode = localStorage.getItem('wellbeingGuardianIsBreakMode');
+            const storedBreakStartTime = localStorage.getItem('wellbeingGuardianBreakStartTime');
+            const storedBreaksTaken = localStorage.getItem('wellbeingGuardianBreaksTaken');
+            const storedSuggestions = localStorage.getItem('wellbeingGuardianSuggestions');
+            const storedTheme = localStorage.getItem('wellbeingGuardianTheme');
+            const storedSound = localStorage.getItem('wellbeingGuardianSound');
+            const storedForcedBreakMode = localStorage.getItem('wellbeingGuardianForcedBreakMode');
+
+            const storedPomodoroMode = localStorage.getItem('wellbeingGuardianPomodoroMode');
+            const storedPomodoroWorkDuration = localStorage.getItem('wellbeingGuardianPomodoroWorkDuration');
+            const storedPomodoroShortBreak = localStorage.getItem('wellbeingGuardianPomodoroShortBreak');
+            const storedPomodoroLongBreak = localStorage.getItem('wellbeingGuardianPomodoroLongBreak');
+            const storedPomodoroCycles = localStorage.getItem('wellbeingGuardianPomodoroCycles');
+            const storedPomodoroCurrentCycle = localStorage.getItem('wellbeingGuardianPomodoroCurrentCycle');
+            const storedPomodoroPhase = localStorage.getItem('wellbeingGuardianPomodoroPhase');
+            const storedPomodoroStartTime = localStorage.getItem('wellbeingGuardianPomodoroStartTime');
+
+
+            if (storedBreakInterval) {
+                breakIntervalMinutes = parseInt(storedBreakInterval);
+                breakIntervalInput.value = breakIntervalMinutes;
+            } else {
+                localStorage.setItem('wellbeingGuardianBreakInterval', breakIntervalMinutes.toString());
+            }
+
+            if (storedBreakDuration) {
+                breakDurationMinutes = parseInt(storedBreakDuration);
+                breakDurationInput.value = breakDurationMinutes;
+            } else {
+                localStorage.setItem('wellbeingGuardianBreakDuration', breakDurationMinutes.toString());
+            }
+
+            if (storedSuggestions) {
+                customSuggestions = JSON.parse(storedSuggestions);
+            }
+            renderSuggestions(); // Render suggestions on load
+
+            if (storedBreaksTaken) {
+                breaksTaken = parseInt(storedBreaksTaken);
+                breaksTakenCount.textContent = breaksTaken;
+            }
+
+            if (storedTheme) {
+                themeSelector.value = storedTheme;
+                applyTheme(storedTheme);
+            } else {
+                applyTheme('default'); // Apply default theme if none stored
+            }
+
+            if (storedSound) {
+                currentSound = storedSound;
+                soundSelector.value = currentSound; // Ensure selector reflects loaded sound
+            }
+
+            if (storedForcedBreakMode === 'true') {
+                forcedBreakActive = true;
+                forcedBreakModeCheckbox.checked = true;
+            }
+
+            // Pomodoro Load
+            if (storedPomodoroMode === 'true') {
+                pomodoroMode = true;
+                pomodoroWorkDuration = parseInt(storedPomodoroWorkDuration || pomodoroWorkDuration);
+                pomodoroShortBreakDuration = parseInt(storedPomodoroShortBreak || pomodoroShortBreakDuration);
+                pomodoroLongBreakDuration = parseInt(storedPomodoroLongBreak || pomodoroLongBreakDuration);
+                pomodoroCyclesBeforeLongBreak = parseInt(storedPomodoroCycles || pomodoroCyclesBeforeLongBreak);
+                pomodoroCurrentCycle = parseInt(storedPomodoroCurrentCycle || 0);
+                pomodoroPhase = storedPomodoroPhase || 'work';
+                pomodoroStartTime = new Date(parseInt(storedPomodoroStartTime));
+
+                pomodoroWorkDurationInput.value = pomodoroWorkDuration;
+                pomodoroShortBreakInput.value = pomodoroShortBreakDuration;
+                pomodoroLongBreakInput.value = pomodoroLongBreakDuration;
+                pomodoroCyclesInput.value = pomodoroCyclesBeforeLongBreak;
+
+                enterPomodoroMode(false); // Re-enter pomodoro mode without resetting cycle
+            }
+
+
+            // Handle paused state (applies to both standard and pomodoro)
+            if (storedIsPaused === 'true' && storedPausedElapsedSeconds) {
+                isPaused = true;
+                pausedElapsedSeconds = parseInt(storedPausedElapsedSeconds);
+                if (pomodoroMode) {
+                     // For pomodoro, adjust pomodoroStartTime
+                    pomodoroStartTime = new Date(new Date().getTime() - pausedElapsedSeconds * 1000);
+                } else {
+                    startTime = new Date(new Date().getTime() - pausedElapsedSeconds * 1000); // Adjust startTime for paused duration
+                }
+                pauseResumeBtn.textContent = 'Resume';
+            } else if (storedStartTime && !pomodoroMode) { // Only load standard start time if not in pomodoro
+                startTime = new Date(parseInt(storedStartTime));
+            } else if (!pomodoroMode) { // If not in pomodoro and no stored start time
+                startTime = new Date();
+                localStorage.setItem('wellbeingGuardianStartTime', startTime.getTime().toString());
+            }
+
+            // Handle break mode state (for standard timer)
+            if (storedIsBreakMode === 'true' && storedBreakStartTime && !pomodoroMode) {
+                isBreakMode = true;
+                breakStartTime = new Date(parseInt(storedBreakStartTime));
+                enterBreakMode(); // Re-enter break mode state
+            }
+            pomodoroCyclesCount.textContent = pomodoroCurrentCycle; // Update pomodoro cycles display
+
+            loadAnalyticsData(); // Load analytics data on startup
+        }
+
+        /**
+         * Updates the timer display and message based on current mode (work or break).
+         */
+        function updateTimer() {
+            let currentElapsedSeconds;
+            let totalIntervalSeconds;
+            let messageText = '';
+            let alertTriggered = false; // For standard mode alert
+            let currentPhaseDuration; // For pomodoro phase duration
+
+            if (pomodoroMode) {
+                const currentTime = new Date();
+                let phaseElapsedSeconds = Math.floor((currentTime.getTime() - pomodoroStartTime.getTime()) / 1000);
+
+                // Increment screen time only if in work phase and not paused
+                if (pomodoroPhase === 'work' && !isPaused) {
+                    incrementScreenTime();
+                }
+
+                switch (pomodoroPhase) {
+                    case 'work':
+                        currentPhaseDuration = pomodoroWorkDuration * 60;
+                        currentElapsedSeconds = currentPhaseDuration - phaseElapsedSeconds;
+                        timerLabel.textContent = `📚 Work Time Left (Cycle ${pomodoroCurrentCycle + 1}/${pomodoroCyclesBeforeLongBreak}):`;
+                        messageText = `Focus on your task!`;
+                        if (currentElapsedSeconds <= 0) {
+                            currentElapsedSeconds = 0;
+                            pomodoroCurrentCycle++;
+                            localStorage.setItem('wellbeingGuardianPomodoroCurrentCycle', pomodoroCurrentCycle.toString());
+                            pomodoroCyclesCount.textContent = pomodoroCurrentCycle;
+                            playBeep();
+                            sendNotification("Work Session Done!", "Time for a break!");
+                            if (pomodoroCurrentCycle % pomodoroCyclesBeforeLongBreak === 0) {
+                                pomodoroPhase = 'long-break';
+                            } else {
+                                pomodoroPhase = 'short-break';
+                            }
+                            pomodoroStartTime = new Date(); // Reset start time for new phase
+                            localStorage.setItem('wellbeingGuardianPomodoroPhase', pomodoroPhase);
+                            localStorage.setItem('wellbeingGuardianPomodoroStartTime', pomodoroStartTime.getTime().toString());
+                            updateTimer(); // Immediately update for new phase
+                            return; // Exit to prevent further processing in this tick
+                        }
+                        break;
+                    case 'short-break':
+                        currentPhaseDuration = pomodoroShortBreakDuration * 60;
+                        currentElapsedSeconds = currentPhaseDuration - phaseElapsedSeconds;
+                        timerLabel.textContent = `☕ Short Break Left (Cycle ${pomodoroCurrentCycle}/${pomodoroCyclesBeforeLongBreak}):`;
+                        const randomShortSuggestion = customSuggestions[Math.floor(Math.random() * customSuggestions.length)];
+                        messageText = `🧘 ${randomShortSuggestion || "Enjoy your short break!"}`;
+                        if (currentElapsedSeconds <= 0) {
+                            currentElapsedSeconds = 0;
+                            playBeep();
+                            sendNotification("Short Break Over!", "Time to get back to work!");
+                            pomodoroPhase = 'work';
+                            pomodoroStartTime = new Date(); // Reset start time for new phase
+                            localStorage.setItem('wellbeingGuardianPomodoroPhase', pomodoroPhase);
+                            localStorage.setItem('wellbeingGuardianPomodoroStartTime', pomodoroStartTime.getTime().toString());
+                            updateTimer(); // Immediately update for new phase
+                            return;
+                        }
+                        break;
+                    case 'long-break':
+                        currentPhaseDuration = pomodoroLongBreakDuration * 60;
+                        currentElapsedSeconds = currentPhaseDuration - phaseElapsedSeconds;
+                        timerLabel.textContent = `🎉 Long Break Left (Cycle ${pomodoroCurrentCycle}/${pomodoroCyclesBeforeLongBreak}):`;
+                        const randomLongSuggestion = customSuggestions[Math.floor(Math.random() * customSuggestions.length)];
+                        messageText = `🥳 ${randomLongSuggestion || "Enjoy your long break!"}`;
+                        if (currentElapsedSeconds <= 0) {
+                            currentElapsedSeconds = 0;
+                            playBeep();
+                            sendNotification("Long Break Over!", "Time to get back to work!");
+                            pomodoroPhase = 'work';
+                            pomodoroStartTime = new Date(); // Reset start time for new phase
+                            localStorage.setItem('wellbeingGuardianPomodoroPhase', pomodoroPhase);
+                            localStorage.setItem('wellbeingGuardianPomodoroStartTime', pomodoroStartTime.getTime().toString());
+                            updateTimer(); // Immediately update for new phase
+                            return;
+                        }
+                        break;
+                }
+                // Progress bar for pomodoro (counting down)
+                progressBarFill.style.width = `${(currentElapsedSeconds / currentPhaseDuration) * 100}%`;
+                // Hide snooze/skip in pomodoro mode
+                snoozeBtn.classList.add('hidden');
+                skipBreakBtn.classList.add('hidden');
+                // Pause/Resume is always available in Pomodoro
+                pauseResumeBtn.classList.remove('hidden');
+
+
+            } else if (isBreakMode) { // Standard Break Mode
+                const currentTime = new Date();
+                const breakElapsedSeconds = Math.floor((currentTime.getTime() - breakStartTime.getTime()) / 1000);
+                currentElapsedSeconds = breakDurationMinutes * 60 - breakElapsedSeconds; // Countdown for break
+                totalIntervalSeconds = breakDurationMinutes * 60;
+                timerLabel.textContent = '☕ Break Time Left:';
+
+                if (currentElapsedSeconds <= 0) {
+                    currentElapsedSeconds = 0;
+                    messageText = '✅ Break over! Time to get back to work.';
+                    playBeep();
+                    sendNotification("Break Over!", "Time to get back to work.");
+                    exitBreakMode(); // Automatically exit break mode
+                } else {
+                    const randomSuggestion = customSuggestions[Math.floor(Math.random() * customSuggestions.length)];
+                    messageText = `🧘 ${randomSuggestion || "Take a short walk or stretch"} for your break.`;
+                }
+                // Progress bar for break timer (counting down)
+                progressBarFill.style.width = `${(currentElapsedSeconds / totalIntervalSeconds) * 100}%`;
+
+                // Handle forced break mode
+                if (forcedBreakActive && breakElapsedSeconds < 30) { // Enforce for first 30 seconds
+                    snoozeBtn.classList.add('hidden');
+                    skipBreakBtn.classList.add('hidden');
+                } else {
+                    snoozeBtn.classList.add('hidden'); // Snooze is for work mode
+                    skipBreakBtn.classList.remove('hidden'); // Allow skipping after forced period
+                }
+                pauseResumeBtn.classList.add('hidden'); // Pause button not relevant during break countdown
+
+
+            } else { // Standard Work Mode
+                if (isPaused) {
+                    currentElapsedSeconds = pausedElapsedSeconds;
+                } else {
+                    const currentTime = new Date();
+                    currentElapsedSeconds = Math.floor((currentTime.getTime() - startTime.getTime()) / 1000);
+                    // Increment screen time only if not paused
+                    incrementScreenTime();
+                }
+                totalIntervalSeconds = breakIntervalMinutes * 60;
+                timerLabel.textContent = '⏱️ Time Elapsed:';
+
+                const minutes = Math.floor((currentElapsedSeconds % 3600) / 60);
+                const seconds = Math.floor(currentElapsedSeconds % 60); // Ensure seconds are floored
+
+                if (minutes >= breakIntervalMinutes) {
+                    messageText = `
+                        <span class="text-secondary font-bold text-2xl animate-pulse">⚠️ ALERT: You've been on screen for over ${breakIntervalMinutes} minutes!</span>
+                        <br>
+                        <span class="text-lg text-gray-700 mt-2">💡 Tip: It's time for a break!</span>
+                    `;
+                    alertTriggered = true;
+                    // Play sound and send notification only once when the break interval is first reached and not paused
+                    if (!isPaused && !localStorage.getItem('alertPlayedForCurrentInterval')) {
+                        playBeep();
+                        sendNotification("Time for a Break!", `You've been on screen for ${breakIntervalMinutes} minutes. Take a break!`);
+                        localStorage.setItem('alertPlayedForCurrentInterval', 'true');
+                        enterBreakMode(); // Automatically start break timer
+                    }
+                } else {
+                    messageText = `✅ Keep going! You’ve used the system for ${minutes}m ${seconds}s.`;
+                    localStorage.removeItem('alertPlayedForCurrentInterval'); // Reset alert flag
+                }
+                // Progress bar for work timer (counting up)
+                let progressPercentage = (currentElapsedSeconds / totalIntervalSeconds) * 100;
+                if (progressPercentage > 100) {
+                    progressPercentage = 100; // Cap at 100%
+                }
+                progressBarFill.style.width = `${progressPercentage}%`;
+
+                // Show/hide snooze button based on alert state
+                if (alertTriggered && !isBreakMode) {
+                    snoozeBtn.classList.remove('hidden');
+                    pauseResumeBtn.classList.add('hidden'); // Hide pause when snooze is an option
+                } else {
+                    snoozeBtn.classList.add('hidden');
+                    pauseResumeBtn.classList.remove('hidden'); // Show pause otherwise
+                }
+                skipBreakBtn.classList.add('hidden'); // Skip break only in break mode
+            }
+
+            const hours = Math.floor(currentElapsedSeconds / 3600);
+            const minutes = Math.floor((currentElapsedSeconds % 3600) / 60);
+            const seconds = Math.floor(currentElapsedSeconds % 60); // Ensure seconds are floored
+
+            // Format time for display (HH:MM:SS)
+            const formattedTime = [hours, minutes, seconds]
+                .map(unit => unit.toString().padStart(2, '0'))
+                .join(':');
+            timeDisplay.textContent = formattedTime;
+            messageDisplay.innerHTML = messageText;
+        }
+
+        /**
+         * Toggles the pause/resume state of the timer.
+         */
+        function togglePauseResume() {
+            isPaused = !isPaused;
+            localStorage.setItem('wellbeingGuardianIsPaused', isPaused.toString());
+
+            if (isPaused) {
+                clearInterval(timerIntervalId); // Stop the timer
+                pauseResumeBtn.textContent = 'Resume';
+                // Store the current elapsed time when paused
+                const currentTime = new Date();
+                if (pomodoroMode) {
+                    pausedElapsedSeconds = Math.floor((currentTime.getTime() - pomodoroStartTime.getTime()) / 1000);
+                } else {
+                    pausedElapsedSeconds = Math.floor((currentTime.getTime() - startTime.getTime()) / 1000);
+                }
+                localStorage.setItem('wellbeingGuardianPausedElapsedSeconds', pausedElapsedSeconds.toString());
+            } else {
+                // When resuming, adjust startTime to account for the paused duration
+                if (pomodoroMode) {
+                    pomodoroStartTime = new Date(new Date().getTime() - pausedElapsedSeconds * 1000);
+                } else {
+                    startTime = new Date(new Date().getTime() - pausedElapsedSeconds * 1000);
+                }
+                timerIntervalId = setInterval(updateTimer, 1000); // Restart the timer
+                pauseResumeBtn.textContent = 'Pause';
+                localStorage.removeItem('wellbeingGuardianPausedElapsedSeconds'); // Clear paused time
+            }
+            updateTimer(); // Update display immediately
+        }
+
+        /**
+         * Resets the timer to the current time, exiting any break mode or pomodoro mode.
+         */
+        function resetTimer() {
+            isPaused = false; // Ensure not paused after reset
+            pauseResumeBtn.textContent = 'Pause';
+            startTime = new Date();
+            pausedElapsedSeconds = 0; // Reset paused time
+            isBreakMode = false; // Exit standard break mode
+            pomodoroMode = false; // Exit pomodoro mode
+            pomodoroCurrentCycle = 0; // Reset pomodoro cycles
+            pomodoroPhase = 'work'; // Reset pomodoro phase
+
+            localStorage.setItem('wellbeingGuardianStartTime', startTime.getTime().toString());
+            localStorage.removeItem('wellbeingGuardianIsPaused');
+            localStorage.removeItem('wellbeingGuardianPausedElapsedSeconds');
+            localStorage.removeItem('alertPlayedForCurrentInterval'); // Reset alert flag
+            localStorage.removeItem('wellbeingGuardianIsBreakMode');
+            localStorage.removeItem('wellbeingGuardianBreakStartTime');
+            localStorage.removeItem('wellbeingGuardianPomodoroMode');
+            localStorage.removeItem('wellbeingGuardianPomodoroCurrentCycle');
+            localStorage.removeItem('wellbeingGuardianPomodoroPhase');
+            localStorage.removeItem('wellbeingGuardianPomodoroStartTime');
+
+
+            clearInterval(timerIntervalId); // Clear existing interval before setting a new one
+            timerIntervalId = setInterval(updateTimer, 1000); // Restart the timer
+            updateTimer(); // Update display immediately
+            // Hide break-related buttons
+            snoozeBtn.classList.add('hidden');
+            skipBreakBtn.classList.add('hidden');
+            startPomodoroBtn.classList.remove('hidden'); // Show start pomodoro button
+            pomodoroCyclesCount.textContent = pomodoroCurrentCycle; // Update pomodoro cycles display
+            pauseResumeBtn.classList.remove('hidden'); // Ensure pause button is visible
+        }
+
+        /**
+         * Enters standard break mode, starting the break timer.
+         */
+        function enterBreakMode() {
+            isBreakMode = true;
+            breakStartTime = new Date();
+            localStorage.setItem('wellbeingGuardianIsBreakMode', 'true');
+            localStorage.setItem('wellbeingGuardianBreakStartTime', breakStartTime.getTime().toString());
+
+            clearInterval(timerIntervalId); // Stop work timer
+            timerIntervalId = setInterval(updateTimer, 1000); // Start break timer
+
+            // Show/hide relevant buttons
+            pauseResumeBtn.classList.add('hidden'); // Pause button not relevant during break countdown
+            resetTimerBtn.classList.remove('hidden'); // Reset always available
+            snoozeBtn.classList.add('hidden'); // Snooze only for work timer
+            startPomodoroBtn.classList.add('hidden'); // Hide start pomodoro button
+            // Skip break button visibility handled in updateTimer based on forcedBreakActive
+            skipBreakBtn.classList.remove('hidden');
+        }
+
+        /**
+         * Exits standard break mode and resumes the work timer.
+         */
+        function exitBreakMode() {
+            isBreakMode = false;
+            breaksTaken++; // Increment breaks taken count
+            localStorage.setItem('wellbeingGuardianBreaksTaken', breaksTaken.toString());
+            breaksTakenCount.textContent = breaksTaken;
+            incrementDailyStat('breaksTaken'); // Record in daily stats
+
+            localStorage.removeItem('wellbeingGuardianIsBreakMode');
+            localStorage.removeItem('wellbeingGuardianBreakStartTime');
+            localStorage.removeItem('alertPlayedForCurrentInterval'); // Ensure alert can play again for next work interval
+
+            // Reset work timer to current time to start a new interval
+            startTime = new Date();
+            localStorage.setItem('wellbeingGuardianStartTime', startTime.getTime().toString());
+
+            clearInterval(timerIntervalId); // Stop break timer
+            timerIntervalId = setInterval(updateTimer, 1000); // Restart work timer
+
+            // Show/hide relevant buttons
+            pauseResumeBtn.classList.remove('hidden');
+            snoozeBtn.classList.add('hidden');
+            skipBreakBtn.classList.add('hidden');
+            startPomodoroBtn.classList.remove('hidden'); // Show start pomodoro button
+            updateTimer(); // Update display immediately
+        }
+
+        /**
+         * Snoozes the break alert by extending the work timer.
+         */
+        function snoozeTimer() {
+            // Extend the start time by 5 minutes (300 seconds)
+            startTime = new Date(startTime.getTime() + (5 * 60 * 1000));
+            localStorage.setItem('wellbeingGuardianStartTime', startTime.getTime().toString());
+            localStorage.removeItem('alertPlayedForCurrentInterval'); // Allow alert to play again after snooze period
+            updateTimer(); // Update display immediately
+            snoozeBtn.classList.add('hidden'); // Hide snooze button after use
+            pauseResumeBtn.classList.remove('hidden'); // Show pause button again
+            incrementDailyStat('snoozes'); // Record in daily stats
+        }
+
+        /**
+         * Enters Pomodoro mode.
+         * @param {boolean} resetCycle - True to reset pomodoro cycle to 0, false to resume.
+         */
+        function enterPomodoroMode(resetCycle = true) {
+            pomodoroMode = true;
+            localStorage.setItem('wellbeingGuardianPomodoroMode', 'true');
+            isBreakMode = false; // Ensure not in standard break mode
+
+            if (resetCycle) {
+                pomodoroCurrentCycle = 0;
+                pomodoroPhase = 'work';
+                pomodoroStartTime = new Date();
+                localStorage.setItem('wellbeingGuardianPomodoroCurrentCycle', pomodoroCurrentCycle.toString());
+                localStorage.setItem('wellbeingGuardianPomodoroPhase', pomodoroPhase);
+                localStorage.setItem('wellbeingGuardianPomodoroStartTime', pomodoroStartTime.getTime().toString());
+            }
+
+            clearInterval(timerIntervalId);
+            timerIntervalId = setInterval(updateTimer, 1000);
+
+            // Hide standard timer buttons
+            snoozeBtn.classList.add('hidden');
+            skipBreakBtn.classList.add('hidden');
+            startPomodoroBtn.classList.add('hidden'); // Hide this button when in pomodoro mode
+            resetTimerBtn.classList.remove('hidden'); // Reset always available
+            pauseResumeBtn.classList.remove('hidden'); // Pause/Resume always available
+
+            pomodoroCyclesCount.textContent = pomodoroCurrentCycle;
+            updateTimer(); // Initial display update for pomodoro
+        }
+
+        // --- Event Handlers ---
+
+        /**
+         * Handles setting the work interval (Standard Mode).
+         */
+        function handleSetInterval() {
+            // Resume audio context on user interaction to bypass autoplay policies
+            if (Tone.context.state !== 'running') {
+                Tone.start();
+            }
+
+            const newInterval = parseInt(breakIntervalInput.value);
+            if (newInterval > 0) {
+                breakIntervalMinutes = newInterval;
+                localStorage.setItem('wellbeingGuardianBreakInterval', breakIntervalMinutes.toString());
+                localStorage.removeItem('alertPlayedForCurrentInterval'); // Reset alert flag
+                // If not in break mode, reset the work timer to start new interval
+                if (!isBreakMode && !pomodoroMode) {
+                    resetTimer(); // This will also update the display
+                } else {
+                    updateTimer(); // Just update display if in break/pomodoro mode
+                }
+                alert("Standard work interval updated successfully!");
+            } else {
+                alert("Please enter a valid work interval (a positive number).");
+            }
+        }
+
+        /**
+         * Handles setting the break duration (Standard Mode).
+         */
+        function handleSetBreakDuration() {
+            const newDuration = parseInt(breakDurationInput.value);
+            if (newDuration > 0) {
+                breakDurationMinutes = newDuration;
+                localStorage.setItem('wellbeingGuardianBreakDuration', breakDurationMinutes.toString());
+                alert("Standard break duration updated successfully!");
+            } else {
+                alert("Please enter a valid break duration (a positive number).");
+            }
+        }
+
+        /**
+         * Handles setting Pomodoro specific durations.
+         */
+        function handleSetPomodoroSettings() {
+            const workDur = parseInt(pomodoroWorkDurationInput.value);
+            const shortBreakDur = parseInt(pomodoroShortBreakInput.value);
+            const longBreakDur = parseInt(pomodoroLongBreakInput.value);
+            const cycles = parseInt(pomodoroCyclesInput.value);
+
+            if (workDur > 0 && shortBreakDur > 0 && longBreakDur > 0 && cycles > 0) {
+                pomodoroWorkDuration = workDur;
+                pomodoroShortBreakDuration = shortBreakDur;
+                pomodoroLongBreakDuration = longBreakDur;
+                pomodoroCyclesBeforeLongBreak = cycles;
+
+                localStorage.setItem('wellbeingGuardianPomodoroWorkDuration', pomodoroWorkDuration.toString());
+                localStorage.setItem('wellbeingGuardianPomodoroShortBreak', pomodoroShortBreakDuration.toString());
+                localStorage.setItem('wellbeingGuardianPomodoroLongBreak', pomodoroLongBreakDuration.toString());
+                localStorage.setItem('wellbeingGuardianPomodoroCycles', pomodoroCyclesBeforeLongBreak.toString());
+
+                alert("Pomodoro settings updated successfully!");
+            } else {
+                alert("Please enter valid positive numbers for all Pomodoro settings.");
+            }
+        }
+
+        /**
+         * Handles adding a new custom break suggestion.
+         */
+        function handleAddSuggestion() {
+            const newSuggestion = newSuggestionInput.value.trim();
+            if (newSuggestion) {
+                customSuggestions.push(newSuggestion);
+                localStorage.setItem('wellbeingGuardianSuggestions', JSON.stringify(customSuggestions));
+                newSuggestionInput.value = ''; // Clear input
+                renderSuggestions();
+            } else {
+                alert("Please enter a suggestion.");
+            }
+        }
+
+        /**
+         * Handles requesting notification permission.
+         */
+        function handleRequestNotificationPermission() {
+            if (!("Notification" in window)) {
+                notificationStatus.textContent = "This browser does not support desktop notification.";
+            } else if (Notification.permission === "granted") {
+                notificationStatus.textContent = "Notifications are already granted.";
+            } else if (Notification.permission !== "denied") {
+                Notification.requestPermission().then(function (permission) {
+                    if (permission === "granted") {
+                        notificationStatus.textContent = "Notifications granted!";
+                        sendNotification("Notifications Enabled", "You will now receive break alerts.");
+                    } else {
+                        notificationStatus.textContent = "Notifications denied.";
+                    }
+                });
+            } else {
+                notificationStatus.textContent = "Notifications are blocked. Please unblock them in your browser settings.";
+            }
+        }
+
+        /**
+         * Handles theme selection change.
+         */
+        function handleThemeChange() {
+            applyTheme(themeSelector.value);
+        }
+
+        /**
+         * Handles sound selection change.
+         */
+        function handleSoundChange() {
+            currentSound = soundSelector.value;
+            localStorage.setItem('wellbeingGuardianSound', currentSound);
+            playBeep(); // Play a sample sound when selected
+        }
+
+        /**
+         * Handles forced break mode checkbox change.
+         */
+        function handleForcedBreakModeChange() {
+            forcedBreakActive = forcedBreakModeCheckbox.checked;
+            localStorage.setItem('wellbeingGuardianForcedBreakMode', forcedBreakActive.toString());
+        }
+
+        // --- Event Listeners (Main App) ---
+        setIntervalBtn.addEventListener('click', handleSetInterval);
+        setBreakDurationBtn.addEventListener('click', handleSetBreakDuration);
+        resetTimerBtn.addEventListener('click', resetTimer);
+        pauseResumeBtn.addEventListener('click', togglePauseResume);
+        snoozeBtn.addEventListener('click', snoozeTimer);
+        skipBreakBtn.addEventListener('click', () => {
+            if (isBreakMode) { // Only increment skip if in standard break mode
+                incrementDailyStat('skips');
+            }
+            exitBreakMode();
+        });
+        addSuggestionBtn.addEventListener('click', handleAddSuggestion);
+        requestNotificationBtn.addEventListener('click', handleRequestNotificationPermission);
+        themeSelector.addEventListener('change', handleThemeChange);
+        soundSelector.addEventListener('change', handleSoundChange);
+        forcedBreakModeCheckbox.addEventListener('change', handleForcedBreakModeChange);
+        startPomodoroBtn.addEventListener('click', () => enterPomodoroMode(true)); // Start new pomodoro session
+        setPomodoroSettingsBtn.addEventListener('click', handleSetPomodoroSettings);
+
+
+        // --- Initial Setup ---
+        // Use window.onload to ensure all DOM elements are loaded before script execution
+        window.onload = function() {
+            console.log("Window loaded. Initializing app."); // Debugging log
+            loadSettings();
+            // Start the timer only if it's not initially paused
+            if (!isPaused) {
+                timerIntervalId = setInterval(updateTimer, 1000); // Update every second
+            }
+            updateTimer(); // Initial display update
+        };
+    </script>
+</body>
+</html>

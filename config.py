@@ -1,0 +1,4 @@
+import os
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+TIME_LIMIT_SECONDS = 60
