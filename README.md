@@ -149,7 +149,7 @@ python app.py
 **Khushi Negi**
 
 - GitHub: https://github.com/khushiinegi
-- LinkedIn: *(Add your LinkedIn profile here)*
+- LinkedIn: (https://www.linkedin.com/in/khushinegi05/)
 
 ---
 
